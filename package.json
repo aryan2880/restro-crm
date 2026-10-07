@@ -1,0 +1,14 @@
+{
+  "name": "platepulse-restaurant-crm",
+  "version": "1.0.0",
+  "description": "Production Multi-Tenant Restaurant QR Ordering, POS & CRM SaaS Platform",
+  "scripts": {
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "build:client": "npm run build --prefix client",
+    "seed": "npm run prisma:seed --prefix server",
+    "test:workflows": "npx tsx server/test_all_workflows.ts"
+  },
+  "keywords": ["restaurant", "pos", "crm", "qr-ordering", "saas", "multi-tenant"],
+  "license": "ISC"
+}
