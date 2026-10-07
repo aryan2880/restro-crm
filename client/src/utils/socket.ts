@@ -4,7 +4,8 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    socket = io('/', {
+    const socketServer = import.meta.env.VITE_API_URL || '/';
+    socket = io(socketServer, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
     });

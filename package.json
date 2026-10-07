@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Production Multi-Tenant Restaurant QR Ordering, POS & CRM SaaS Platform",
   "scripts": {
+    "build": "npm --prefix client install && npm --prefix client run build",
     "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client",
     "build:client": "npm run build --prefix client",
