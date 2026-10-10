@@ -71,6 +71,11 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Restaurant CRM Backend Server running on http://localhost:${PORT}`);
-});
+if (process.env.VERCEL !== '1' && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  server.listen(PORT, () => {
+    console.log(`Restaurant CRM Backend Server running on http://localhost:${PORT}`);
+  });
+}
+
+export { app, server };
+export default app;

@@ -1,4 +1,4 @@
-const API_HOST = import.meta.env.VITE_API_URL || '';
+const API_HOST = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 const BASE_URL = `${API_HOST}/api`;
 
 export const getAuthToken = (): string | null => {

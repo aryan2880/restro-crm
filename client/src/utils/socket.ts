@@ -4,10 +4,16 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    const socketServer = import.meta.env.VITE_API_URL || '/';
+    const socketServer = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '') || '/';
     socket = io(socketServer, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
+      reconnectionAttempts: 5,
+      timeout: 10000,
+    });
+
+    socket.on('connect_error', (err) => {
+      console.warn('Real-time sync alert:', err.message);
     });
   }
   return socket;
