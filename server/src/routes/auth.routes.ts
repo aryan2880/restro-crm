@@ -6,42 +6,117 @@ import { Role, RestaurantStatus, SubscriptionPlan } from '@prisma/client';
 
 const router = Router();
 
-// POST /api/auth/login
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
+// GET /api/auth/quick-profiles - Return available profiles for 1-click passwordless switching
+router.get('/quick-profiles', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required.' });
-      return;
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      include: {
-        restaurant: true,
+    const users = await prisma.user.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        restaurant: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
       },
+      orderBy: { role: 'asc' },
     });
+    res.json(users);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch quick profiles' });
+  }
+});
+
+// POST /api/auth/quick-login - Instant 1-click login without any password
+router.post('/quick-login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, role } = req.body;
+
+    let user = null;
+    if (email) {
+      user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        include: { restaurant: true },
+      });
+    } else if (role) {
+      user = await prisma.user.findFirst({
+        where: { role, isActive: true },
+        include: { restaurant: true },
+      });
+    }
 
     if (!user) {
-      res.status(401).json({ error: 'Invalid email or password credentials.' });
+      user = await prisma.user.findFirst({
+        where: { role: Role.RESTAURANT_OWNER, isActive: true },
+        include: { restaurant: true },
+      }) || await prisma.user.findFirst({
+        where: { isActive: true },
+        include: { restaurant: true },
+      });
+    }
+
+    if (!user) {
+      res.status(404).json({ error: 'No user profile found.' });
       return;
     }
 
-    if (!user.isActive) {
-      res.status(403).json({ error: 'Your account has been deactivated. Please contact your administrator.' });
-      return;
+    const token = signToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        phone: user.phone,
+        restaurantId: user.restaurantId,
+      },
+      restaurant: user.restaurant,
+    });
+  } catch (error: any) {
+    console.error('Quick login error:', error);
+    res.status(500).json({ error: 'Quick login failed.' });
+  }
+});
+
+// POST /api/auth/login - Passwordless login (password completely optional/ignored)
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    let user = null;
+    if (email && email.trim()) {
+      user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        include: {
+          restaurant: true,
+        },
+      });
     }
 
-    // Check if restaurant is suspended
-    if (user.restaurant && user.restaurant.status === RestaurantStatus.SUSPENDED) {
-      res.status(403).json({ error: 'This restaurant workspace is currently suspended. Please contact platform support.' });
-      return;
+    // If not found by email or no email provided, fallback to primary owner
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { role: Role.RESTAURANT_OWNER, isActive: true },
+        include: { restaurant: true },
+      }) || await prisma.user.findFirst({
+        where: { isActive: true },
+        include: { restaurant: true },
+      });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!passwordMatch) {
-      res.status(401).json({ error: 'Invalid email or password credentials.' });
+    if (!user) {
+      res.status(404).json({ error: 'No user found.' });
       return;
     }
 
@@ -69,7 +144,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// POST /api/auth/register-restaurant
+// POST /api/auth/register-restaurant (Password completely optional)
 router.post('/register-restaurant', async (req: Request, res: Response): Promise<void> => {
   try {
     const {
@@ -91,7 +166,7 @@ router.post('/register-restaurant', async (req: Request, res: Response): Promise
       coverImage,
     } = req.body;
 
-    if (!restaurantName || !slug || !email || !password || !ownerName || !phone || !address) {
+    if (!restaurantName || !slug || !email || !ownerName || !phone || !address) {
       res.status(400).json({ error: 'Missing mandatory fields for restaurant onboarding.' });
       return;
     }
@@ -116,7 +191,7 @@ router.post('/register-restaurant', async (req: Request, res: Response): Promise
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password || 'nopassword', 10);
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create Restaurant

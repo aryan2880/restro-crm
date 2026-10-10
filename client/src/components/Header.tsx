@@ -4,6 +4,8 @@ import { api } from '../utils/api';
 import { NotificationItem } from '../types';
 import { getSocket } from '../utils/socket';
 import { playOrderNotificationSound } from '../utils/sound';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 interface HeaderProps {
   title: string;
@@ -13,6 +15,8 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ title, subtitle, enableSound, setEnableSound }) => {
+  const { user, quickSwitch } = useAuth();
+  const { showToast } = useToast();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
@@ -77,6 +81,38 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, enableSound, se
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+        {/* Quick Role Switcher (1-Click, Passwordless) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+            Role:
+          </span>
+          <select
+            value={user?.email || 'owner@grandbistro.com'}
+            onChange={async (e) => {
+              await quickSwitch(e.target.value);
+              showToast('Switched workspace role instantly!', 'info');
+            }}
+            style={{
+              padding: '0.3rem 0.5rem',
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#f8fafc',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#0f172a',
+              cursor: 'pointer',
+              outline: 'none',
+            }}
+          >
+            <option value="owner@grandbistro.com">👑 Grand Bistro (Owner)</option>
+            <option value="kitchen@grandbistro.com">👨‍🍳 Kitchen Head Chef (KDS)</option>
+            <option value="waiter@grandbistro.com">🛎️ Floor Waiter</option>
+            <option value="manager@grandbistro.com">📊 Restaurant Manager</option>
+            <option value="owner@tokyoramen.com">🍜 Tokyo Ramen (Tenant B)</option>
+            <option value="admin@platepulse.com">🛡️ Platform Super Admin</option>
+          </select>
+        </div>
+
         {/* Real-time Indicator */}
         <div
           style={{

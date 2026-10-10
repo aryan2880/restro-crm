@@ -18,11 +18,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   onNavigateTerms,
   onNavigateSupport,
 }) => {
-  const { login } = useAuth();
+  const { login, quickSwitch } = useAuth();
   const { showToast } = useToast();
 
   const [email, setEmail] = useState<string>('owner@grandbistro.com');
-  const [password, setPassword] = useState<string>('Owner123!');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,22 +33,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     try {
       const res = await api.post<{ token: string; user: User; restaurant?: Restaurant }>('/auth/login', {
         email: email.trim(),
-        password,
       });
 
       login(res.token, res.user, res.restaurant);
-      showToast(`Welcome back, ${res.user.name}!`, 'success');
+      showToast(`Welcome, ${res.user.name}!`, 'success');
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please verify credentials.');
+      setError(err.message || 'Unable to open workspace.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fillQuickLogin = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
+  const handleInstantLogin = async (targetEmail: string) => {
     setError(null);
+    setLoading(true);
+    try {
+      await quickSwitch(targetEmail);
+      showToast('Workspace opened instantly!', 'success');
+    } catch (err: any) {
+      setError(err.message || 'Failed to switch workspace.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,7 +71,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div
           style={{
-            maxWidth: '440px',
+            maxWidth: '480px',
             width: '100%',
             backgroundColor: '#ffffff',
             borderRadius: '12px',
@@ -117,7 +122,77 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Instant 1-Click Role Access */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.75rem' }}>
+              1-Click Instant Workspace Access (No Password)
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => handleInstantLogin('owner@grandbistro.com')}
+                className="btn btn-primary btn-sm"
+                style={{ fontSize: '0.8125rem', justifyContent: 'center', padding: '0.625rem' }}
+                disabled={loading}
+              >
+                👑 Bistro Owner
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInstantLogin('kitchen@grandbistro.com')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.8125rem', justifyContent: 'center', padding: '0.625rem' }}
+                disabled={loading}
+              >
+                👨‍🍳 Kitchen Chef
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInstantLogin('waiter@grandbistro.com')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.8125rem', justifyContent: 'center', padding: '0.625rem' }}
+                disabled={loading}
+              >
+                🛎️ Floor Waiter
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInstantLogin('manager@grandbistro.com')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.8125rem', justifyContent: 'center', padding: '0.625rem' }}
+                disabled={loading}
+              >
+                📊 Bistro Manager
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInstantLogin('owner@tokyoramen.com')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.8125rem', justifyContent: 'center', padding: '0.625rem' }}
+                disabled={loading}
+              >
+                🍜 Tokyo Ramen
+              </button>
+              <button
+                type="button"
+                onClick={() => handleInstantLogin('admin@platepulse.com')}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.8125rem', justifyContent: 'center', padding: '0.625rem' }}
+                disabled={loading}
+              >
+                <Shield size={14} color="#0284c7" /> Super Admin
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1rem 0' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>or custom email</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+          </div>
+
+          {/* Passwordless Custom Email Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             <div>
               <label>Work Email Address</label>
               <div style={{ position: 'relative' }}>
@@ -133,71 +208,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               </div>
             </div>
 
-            <div>
-              <label>Account Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={16} style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8' }} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={{ paddingLeft: '34px' }}
-                  required
-                />
-              </div>
-            </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%', fontWeight: 700, marginTop: '0.5rem' }}
+              className="btn btn-outline btn-md"
+              style={{ width: '100%', fontWeight: 600 }}
             >
-              {loading ? 'Authenticating...' : 'Sign In to Workspace'}
+              {loading ? 'Opening Workspace...' : 'Enter Workspace Instantly'}
             </button>
           </form>
-
-          {/* Quick Demo Switcher */}
-          <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
-            <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>
-              Quick Test Credentials
-            </span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.375rem' }}>
-              <button
-                type="button"
-                onClick={() => fillQuickLogin('owner@grandbistro.com', 'Owner123!')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
-              >
-                Grand Bistro (Owner)
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickLogin('kitchen@grandbistro.com', 'Kitchen123!')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
-              >
-                Kitchen Chef (KDS)
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickLogin('owner@tokyoramen.com', 'Owner123!')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
-              >
-                Tokyo Ramen (Tenant B)
-              </button>
-              <button
-                type="button"
-                onClick={() => fillQuickLogin('admin@platepulse.com', 'AdminPassword123!')}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem', justifyContent: 'flex-start' }}
-              >
-                <Shield size={12} color="#0284c7" /> Super Admin
-              </button>
-            </div>
-          </div>
 
           {/* Onboarding Link */}
           <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.8125rem', color: '#64748b' }}>

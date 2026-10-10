@@ -49,8 +49,8 @@ router.post(
     try {
       const { email, password, name, phone, role, branchId, roleTitle } = req.body;
 
-      if (!email || !password || !name || !role) {
-        res.status(400).json({ error: 'Email, password, name, and role are required.' });
+      if (!email || !name || !role) {
+        res.status(400).json({ error: 'Email, name, and role are required.' });
         return;
       }
 
@@ -68,7 +68,7 @@ router.post(
         return;
       }
 
-      const passwordHash = await bcrypt.hash(password, 10);
+      const passwordHash = await bcrypt.hash(password || 'nopassword', 10);
 
       const newStaff = await prisma.$transaction(async (tx) => {
         const user = await tx.user.create({

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { UserCheck, Plus, Trash2, Key, Shield, UserX, UserPlus } from 'lucide-react';
+import { UserCheck, Plus, Trash2, Shield, UserX, UserPlus, LogIn } from 'lucide-react';
 import { api } from '../utils/api';
 import { User, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
 export const StaffPage: React.FC = () => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, quickSwitch } = useAuth();
   const { showToast } = useToast();
 
   const [staffList, setStaffList] = useState<User[]>([]);
@@ -14,19 +14,13 @@ export const StaffPage: React.FC = () => {
 
   // Modals
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
-  const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
-  const [selectedStaff, setSelectedStaff] = useState<User | null>(null);
 
   // Add Form
   const [name, setName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
   const [role, setRole] = useState<Role>('WAITER');
-  const [password, setPassword] = useState<string>('');
   const [roleTitle, setRoleTitle] = useState<string>('');
-
-  // Reset Password Form
-  const [newPassword, setNewPassword] = useState<string>('');
 
   const fetchStaff = async () => {
     try {
@@ -46,7 +40,7 @@ export const StaffPage: React.FC = () => {
 
   const handleAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) return;
+    if (!name || !email) return;
 
     try {
       const created = await api.post<User>('/staff', {
@@ -54,7 +48,6 @@ export const StaffPage: React.FC = () => {
         email: email.trim(),
         phone: phone.trim() || undefined,
         role,
-        password,
         roleTitle: roleTitle.trim() || undefined,
       });
 
@@ -63,7 +56,6 @@ export const StaffPage: React.FC = () => {
       setName('');
       setEmail('');
       setPhone('');
-      setPassword('');
       setRoleTitle('');
       showToast(`Staff member '${created.name}' added successfully!`, 'success');
     } catch (err: any) {
@@ -80,23 +72,6 @@ export const StaffPage: React.FC = () => {
       showToast(`${member.name} is now ${updated.isActive ? 'Active' : 'Deactivated'}`, 'info');
     } catch (err: any) {
       showToast(err.message || 'Failed to update status.', 'error');
-    }
-  };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedStaff || !newPassword) return;
-
-    try {
-      await api.post(`/staff/${selectedStaff.id}/reset-password`, {
-        newPassword,
-      });
-      showToast(`Password reset successfully for ${selectedStaff.name}`, 'success');
-      setShowPasswordModal(false);
-      setSelectedStaff(null);
-      setNewPassword('');
-    } catch (err: any) {
-      showToast(err.message || 'Failed to reset password.', 'error');
     }
   };
 
@@ -179,14 +154,14 @@ export const StaffPage: React.FC = () => {
                   <td>
                     <div style={{ display: 'flex', gap: '0.375rem' }}>
                       <button
-                        onClick={() => {
-                          setSelectedStaff(member);
-                          setShowPasswordModal(true);
+                        onClick={async () => {
+                          await quickSwitch(member.email);
+                          showToast(`Switched workspace to ${member.name}!`, 'success');
                         }}
                         className="btn btn-secondary btn-sm"
-                        title="Reset Password"
+                        title={`1-Click Switch to ${member.name}`}
                       >
-                        <Key size={14} />
+                        <LogIn size={14} color="#0284c7" />
                       </button>
                       {member.id !== currentUser?.id && (
                         <>
@@ -215,7 +190,7 @@ export const StaffPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Staff Modal */}
+      {/* Add Staff Modal (Passwordless) */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -253,13 +228,12 @@ export const StaffPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label>Initial Password *</label>
+                  <label>Designation / Title (Optional)</label>
                   <input
-                    type="password"
-                    placeholder="Min 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+                    type="text"
+                    placeholder="e.g. Senior Sous Chef"
+                    value={roleTitle}
+                    onChange={(e) => setRoleTitle(e.target.value)}
                   />
                 </div>
               </div>
@@ -280,38 +254,6 @@ export const StaffPage: React.FC = () => {
                 </button>
                 <button type="submit" className="btn btn-primary">
                   Create Member
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Password Modal */}
-      {showPasswordModal && selectedStaff && (
-        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Reset Password</h3>
-            <p style={{ fontSize: '0.8125rem', color: '#64748b', marginBottom: '1rem' }}>
-              Reset login credentials for <strong>{selectedStaff.name}</strong> ({selectedStaff.email})
-            </p>
-            <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label>New Password *</label>
-                <input
-                  type="password"
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                <button type="button" onClick={() => setShowPasswordModal(false)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Update Password
                 </button>
               </div>
             </form>

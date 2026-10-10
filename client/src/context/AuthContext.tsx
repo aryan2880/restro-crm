@@ -11,6 +11,7 @@ interface AuthContextType {
   logout: () => void;
   refreshProfile: () => Promise<void>;
   setRestaurant: (restaurant: Restaurant) => void;
+  quickSwitch: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,15 +23,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async () => {
     const token = getAuthToken();
-    if (!token) {
-      setUser(null);
-      setRestaurantState(null);
-      setIsLoading(false);
-      return;
+    if (token) {
+      try {
+        const data = await api.get<{ user: User; restaurant: Restaurant }>('/auth/me');
+        setUser(data.user);
+        setRestaurantState(data.restaurant);
+
+        if (data.restaurant?.id) {
+          joinRestaurantRoom(data.restaurant.id);
+        }
+        setIsLoading(false);
+        return;
+      } catch (err) {
+        console.warn('Existing token invalid, logging in default account...', err);
+        removeAuthToken();
+      }
     }
 
+    // Direct passwordless auto-login so the user never sees a login barrier
     try {
-      const data = await api.get<{ user: User; restaurant: Restaurant }>('/auth/me');
+      const data = await api.post<{ token: string; user: User; restaurant: Restaurant }>('/auth/quick-login', {
+        email: 'owner@grandbistro.com',
+      });
+      setAuthToken(data.token);
       setUser(data.user);
       setRestaurantState(data.restaurant);
 
@@ -38,10 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         joinRestaurantRoom(data.restaurant.id);
       }
     } catch (err) {
-      console.error('Failed to fetch auth profile:', err);
-      removeAuthToken();
-      setUser(null);
-      setRestaurantState(null);
+      console.error('Failed passwordless auto-login:', err);
     } finally {
       setIsLoading(false);
     }
@@ -60,11 +72,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const quickSwitch = async (email: string) => {
+    try {
+      setIsLoading(true);
+      const data = await api.post<{ token: string; user: User; restaurant: Restaurant }>('/auth/quick-login', { email });
+      setAuthToken(data.token);
+      setUser(data.user);
+      setRestaurantState(data.restaurant || null);
+      if (data.restaurant?.id) {
+        joinRestaurantRoom(data.restaurant.id);
+      }
+    } catch (err) {
+      console.error('Failed to quick switch user:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
-    removeAuthToken();
-    setUser(null);
-    setRestaurantState(null);
-    window.location.href = '/login';
+    // Reset to default owner without logging out to a blocked screen
+    quickSwitch('owner@grandbistro.com');
   };
 
   const setRestaurant = (updated: Restaurant) => {
@@ -81,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         refreshProfile: fetchProfile,
         setRestaurant,
+        quickSwitch,
       }}
     >
       {children}

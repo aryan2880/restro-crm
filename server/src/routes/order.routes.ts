@@ -355,7 +355,7 @@ router.patch('/:id/status', authenticate, enforceTenant, async (req: Request, re
       });
 
       // Create notification for certain states
-      if ([OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(targetStatus)) {
+      if (([OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.COMPLETED, OrderStatus.CANCELLED] as OrderStatus[]).includes(targetStatus)) {
         await tx.notification.create({
           data: {
             restaurantId: req.restaurantId!,

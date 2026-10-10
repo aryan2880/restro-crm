@@ -18,7 +18,7 @@ export const RegisterRestaurantPage: React.FC<RegisterRestaurantPageProps> = ({ 
     slug: '',
     ownerName: '',
     email: '',
-    password: '',
+    website: '',
     phone: '',
     address: '',
     gstNumber: '',
@@ -202,13 +202,12 @@ export const RegisterRestaurantPage: React.FC<RegisterRestaurantPageProps> = ({ 
                 />
               </div>
               <div>
-                <label>Password *</label>
+                <label>Website (Optional)</label>
                 <input
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
+                  type="url"
+                  placeholder="https://myrestaurant.com"
+                  value={formData.website}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                 />
               </div>
             </div>
